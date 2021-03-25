@@ -8,6 +8,8 @@
 // #include <sys/time.h>
 #include <time.h>
 // #include <fcntl.h> 
+#include "./linked_list.h"
+#include "./pcb.h"
 
 #define FILE_EXTENTION ".txt"
 #define READ_FROM_FILE_OPT "-f"
@@ -72,4 +74,50 @@ int main(int argc, char *argv[])
 
     srand ( time(NULL) );
     printf("exp rand num %f \n", getExpRandomNum(30));
+
+
+    // Pointers to the linked list head/ tail
+    struct LL_NODE* LINKED_LIST_HEAD = NULL;
+    struct LL_NODE* LINKED_LIST_TAIL = NULL;
+
+    // 
+    // LL_push(4, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    // LL_push(3, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    // LL_push(42, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    // LL_push(8, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    struct PCB_DATA *removedValue = NULL;
+
+    struct PCB_DATA * data1 = create_pcb_data(1, 3, 5, 21);
+    struct PCB_DATA * data2 = create_pcb_data(4, 1, 6, 12);    
+    struct PCB_DATA * data3 = create_pcb_data(5, 2, 5, 13);
+    struct PCB_DATA * data4 = create_pcb_data(2, 1, 5, 23);
+    
+    LL_shift(data1, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    LL_shift(data2, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    LL_shift(data3, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    LL_shift(data4, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+
+    LL_unshift(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    // LL_pop(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    // LL_pop(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    // LL_pop(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+
+    // LL_unshift(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    // LL_pop(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    // LL_unshift(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    // LL_unshift(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+  
+  
+    // LL_remove(LINKED_LIST_HEAD, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+    // LL_remove(LINKED_LIST_TAIL, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+
+    // LL_remove_by_value(555, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+
+    LL_print(LINKED_LIST_HEAD, LINKED_LIST_TAIL);
+    printf("removed value: %d\n", removedValue->b_index);
+
+    destroy_pcb(data1);
+    destroy_pcb(data2);
+    destroy_pcb(data3);
+    destroy_pcb(data4);
 }

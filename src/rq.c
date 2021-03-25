@@ -1,26 +1,14 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include "./pcb.h"
+#include "./linked_list.h"
 
 #define TRUE 1
 #define FALSE 0
 
-/*------------------------------------------
-    Process Control Block implementation
-------------------------------------------*/
-struct PCB_DATA 
-{
-    int t_index; // Thread index
-    int b_index; // Burst index
-    int b_length; // Burst length
-    int wall_clock_time; // The wall clock time the bust is generated
-};
-
-// FUNCTIONS' PROTOTYPES
-struct PCB_DATA *create_pcb_data(int t_index, int b_index, int b_length, int wall_clock_time);
-int isDataEqual(struct PCB_DATA *data1, struct PCB_DATA *data2);
-void destroy_pcb(struct PCB_DATA *pcb_data);
-
-// FUNCTIONS' IMPLEMENTATIONS
+/*============================================
+        PCB's FUNCTIONS IMPLEMENTATIONS
+==============================================*/
 /**
  * @param t_index Thread index
  * @param b_index Burst index
@@ -64,27 +52,9 @@ void destroy_pcb(struct PCB_DATA *pcb_data){
     free(pcb_data);
 }
 
-/*------------------------------------------
-        Linked List implementation
-------------------------------------------*/
-struct LL_NODE
-{
-    int index;
-    struct PCB_DATA *data;
-    struct LL_NODE *next;
-    struct LL_NODE *prev;
-};
-
-// FUNCTIONS' PROTOTYPES
-void LL_push(struct PCB_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAIL);
-void LL_shift(struct PCB_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAIL);
-int LL_pop(struct PCB_DATA **data, struct LL_NODE **HEAD, struct LL_NODE **TAIL);
-int LL_unshift(struct PCB_DATA **data, struct LL_NODE **HEAD, struct LL_NODE **TAIL);
-void LL_remove(struct LL_NODE *pcbToRemove, struct LL_NODE **HEAD, struct LL_NODE **TAIL);
-void LL_remove_by_value(struct PCB_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAIL);
-void LL_print(struct LL_NODE* HEAD, struct LL_NODE* TAIL);
-
-// FUNCTIONS' IMPLEMENTATION
+/*============================================
+    LINKED LIST's FUNCTIONS IMPLEMENTATIONS
+==============================================*/
 /**
  * Inserts a new item to the end of the linked list
  * @param data The value to be inserted
@@ -244,49 +214,49 @@ void LL_print(struct LL_NODE* HEAD, struct LL_NODE* TAIL){
     }
 }
 
-int main(){
-    // Pointers to the linked list head/ tail
-    struct LL_NODE* LINKED_LIST_HEAD = NULL;
-    struct LL_NODE* LINKED_LIST_TAIL = NULL;
+// int main(){
+//     // Pointers to the linked list head/ tail
+//     struct LL_NODE* LINKED_LIST_HEAD = NULL;
+//     struct LL_NODE* LINKED_LIST_TAIL = NULL;
 
-    // 
-    // LL_push(4, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    // LL_push(3, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    // LL_push(42, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    // LL_push(8, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    struct PCB_DATA *removedValue = NULL;
+//     // 
+//     // LL_push(4, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     // LL_push(3, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     // LL_push(42, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     // LL_push(8, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     struct PCB_DATA *removedValue = NULL;
 
-    struct PCB_DATA * data1 = create_pcb_data(1, 3, 5, 21);
-    struct PCB_DATA * data2 = create_pcb_data(4, 1, 6, 12);    
-    struct PCB_DATA * data3 = create_pcb_data(5, 2, 5, 13);
-    struct PCB_DATA * data4 = create_pcb_data(2, 1, 5, 23);
+//     struct PCB_DATA * data1 = create_pcb_data(1, 3, 5, 21);
+//     struct PCB_DATA * data2 = create_pcb_data(4, 1, 6, 12);    
+//     struct PCB_DATA * data3 = create_pcb_data(5, 2, 5, 13);
+//     struct PCB_DATA * data4 = create_pcb_data(2, 1, 5, 23);
     
-    LL_shift(data1, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    LL_shift(data2, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    LL_shift(data3, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    LL_shift(data4, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     LL_shift(data1, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     LL_shift(data2, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     LL_shift(data3, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     LL_shift(data4, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
 
-    LL_unshift(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    // LL_pop(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    // LL_pop(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    // LL_pop(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     LL_unshift(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     // LL_pop(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     // LL_pop(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     // LL_pop(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
 
-    // LL_unshift(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    // LL_pop(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    // LL_unshift(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    // LL_unshift(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     // LL_unshift(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     // LL_pop(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     // LL_unshift(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     // LL_unshift(&removedValue, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
   
   
-    // LL_remove(LINKED_LIST_HEAD, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
-    // LL_remove(LINKED_LIST_TAIL, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     // LL_remove(LINKED_LIST_HEAD, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     // LL_remove(LINKED_LIST_TAIL, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
 
-    // LL_remove_by_value(555, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
+//     // LL_remove_by_value(555, &LINKED_LIST_HEAD, &LINKED_LIST_TAIL);
 
-    LL_print(LINKED_LIST_HEAD, LINKED_LIST_TAIL);
-    printf("removed value: %d\n", removedValue->b_index);
+//     LL_print(LINKED_LIST_HEAD, LINKED_LIST_TAIL);
+//     printf("removed value: %d\n", removedValue->b_index);
 
-    destroy_pcb(data1);
-    destroy_pcb(data2);
-    destroy_pcb(data3);
-    destroy_pcb(data4);
-}
+//     destroy_pcb(data1);
+//     destroy_pcb(data2);
+//     destroy_pcb(data3);
+//     destroy_pcb(data4);
+// }
