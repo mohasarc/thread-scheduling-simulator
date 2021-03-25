@@ -1,6 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define TRUE 1
+#define FALSE 0
+
 /**
  * The Ready Queue implentation (as a linked list)
  * */
@@ -15,8 +18,8 @@ struct PCB
 // FUNCTION PROTOTYPES
 void LL_push(int index, struct PCB **HEAD, struct PCB **TAIL);
 void LL_shift(int index, struct PCB **HEAD, struct PCB **TAIL);
-void LL_pop(int *index, struct PCB **HEAD, struct PCB **TAIL);
-void LL_unshift(int *index, struct PCB **HEAD, struct PCB **TAIL);
+int LL_pop(int *index, struct PCB **HEAD, struct PCB **TAIL);
+int LL_unshift(int *index, struct PCB **HEAD, struct PCB **TAIL);
 void LL_remove(struct PCB *pcbToRemove, struct PCB **HEAD, struct PCB **TAIL);
 void LL_remove_by_value(int index, struct PCB **HEAD, struct PCB **TAIL);
 void LL_print(struct PCB* HEAD, struct PCB* TAIL);
@@ -86,34 +89,16 @@ void LL_shift(int index, struct PCB **HEAD, struct PCB **TAIL){
  * @param index The value to be inserted
  * @param HEAD Pointer to the head of the linked list
  * @param TAIL Pointer to the tail of the linked list
+ * @return Removal success status
  * */
-void LL_pop(int *index, struct PCB **HEAD, struct PCB **TAIL){
-    struct PCB *nodeToRemove;
-
-    if (TAIL){
-        // Return the value
+int LL_pop(int *index, struct PCB **HEAD, struct PCB **TAIL){
+    if (*TAIL){
         *index = (*TAIL)->index;
-
-        // Remove the node
-        nodeToRemove = (*TAIL);
-        (*TAIL) = (*TAIL)->prev;
-        if ((*TAIL)){
-            (*TAIL)->next = NULL;
-        }
-
-        // Check if it was the last node
-        if (nodeToRemove == (*HEAD)){
-            (*HEAD) = NULL;
-        }
-
-        // Dealocate the memory of the deleted node
-        free(nodeToRemove);
+        LL_remove(*TAIL, HEAD, TAIL);
+        return TRUE;
+    } else {
+        return FALSE;
     }
-
-    // if (*TAIL){
-    //     *index = (*TAIL)->index;
-    //     LL_remove(*TAIL, HEAD, TAIL);
-    // }
 }
 
 /**
@@ -121,29 +106,16 @@ void LL_pop(int *index, struct PCB **HEAD, struct PCB **TAIL){
  * @param index The value to be inserted
  * @param HEAD Pointer to the head of the linked list
  * @param TAIL Pointer to the tail of the linked list
+ * @return Removal success status
  * */
-void LL_unshift(int *index, struct PCB **HEAD, struct PCB **TAIL){
-    struct PCB *itemToRemove;
-
-    if (HEAD){
-        // Return the value
+int LL_unshift(int *index, struct PCB **HEAD, struct PCB **TAIL){
+    if (*HEAD){
         *index = (*HEAD)->index;
-
-        // Remove the node
-        itemToRemove = *HEAD;
-        (*HEAD) = (*HEAD)->next;
-        if (*HEAD){
-            (*HEAD)->prev = NULL;
-        }
-
-        // Dealocate the memory
-        free(itemToRemove);
+        LL_remove(*HEAD, HEAD, TAIL);
+        return TRUE;
+    } else {
+        return FALSE;
     }
-
-    // if (*HEAD){
-    //     *index = (*HEAD)->index;
-    //     LL_remove(*HEAD, HEAD, TAIL);
-    // }
 }
 
 /**
