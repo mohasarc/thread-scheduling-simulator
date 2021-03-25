@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include "./pcb.h"
-#include "./defns.h"
+#include "../defns.h"
 
 /**
  * @param t_index Thread index

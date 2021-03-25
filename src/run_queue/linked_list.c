@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "./linked_list.h"
-#include "./defns.h"
+#include "../defns.h"
 
 /**
  * Inserts a new item to the end of the linked list

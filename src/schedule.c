@@ -8,13 +8,12 @@
 // #include <sys/time.h>
 #include <time.h>
 // #include <fcntl.h> 
-#include "./linked_list.h"
-#include "./pcb.h"
+#include "./run_queue/linked_list.h"
+#include "./run_queue/pcb.h"
+#include "defns.h"
 
 #define FILE_EXTENTION ".txt"
 #define READ_FROM_FILE_OPT "-f"
-#define TRUE 1
-#define FALSE 0
 
 double getExpRandomNum(int mean ){
     double rn;
