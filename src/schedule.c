@@ -1,16 +1,29 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/time.h>
-#include<fcntl.h> 
+// #include <sys/types.h>
+// #include <sys/wait.h>
+// #include <sys/time.h>
+#include <time.h>
+// #include <fcntl.h> 
 
 #define FILE_EXTENTION ".txt"
 #define READ_FROM_FILE_OPT "-f"
 #define TRUE 1
 #define FALSE 0
+
+double getExpRandomNum(int mean ){
+    double rn;
+    double lambda = 1 / (double)mean;
+
+    // Get a random number in [0,1)
+    rn = (double)rand() / (double)((unsigned)RAND_MAX + 1);
+
+    // Convert to exponential destribution
+    return log((1-rn))/(-lambda);
+}
 
 int main(int argc, char *argv[])
 {  
@@ -56,4 +69,7 @@ int main(int argc, char *argv[])
 
     printf("Reading from file: %d, fileName: %s \n", readFromFile, fileName);
     printf("Reading params: N %d, Bcount %d, minB %d, avgB %d, minA %d, avgA %d, ALG %s \n", N, Bcount, minB, avgB, minA, avgA, ALG);
+
+    srand ( time(NULL) );
+    printf("exp rand num %f \n", getExpRandomNum(30));
 }
