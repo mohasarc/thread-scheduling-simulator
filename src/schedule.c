@@ -11,6 +11,7 @@
 // #include <fcntl.h> 
 #include "./run_queue/linked_list.h"
 #include "./run_queue/pcb.h"
+#include "./scheduling_algos/scheduling_algos.h"
 #include "defns.h"
 
 #define FILE_EXTENTION ".txt"
@@ -61,7 +62,7 @@ void *doWJob(void* t_index){
     long wall_clock_time_usec;
     int this_t_index = *((int *) t_index);
 
-    srand ( time(NULL) );
+    srand ( time(NULL) * this_t_index );
     
     for (int i = 1; i <= Bcount; i++)
     {
@@ -106,16 +107,19 @@ void *doWJob(void* t_index){
 void *doSJob(void* param){
     struct PCB_DATA *pcb_to_process; 
     int success = FALSE;
+    int processed = 0;
 
     // There will be max. N*Bcount number of bursts
-    for (int i = 0; i < (N*Bcount); i++)
+    while (processed < (N*Bcount))
     {
         // Try to get an item from Ready Queue
         pthread_mutex_lock(&a_mutex);
         {
-            success = LL_pop(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
+            // success = LL_pop(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
+            success = get_using_SJF(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
             if (success)
-            {
+            {   
+                processed++;
                 printf("Running thread %d for %d'th bust with length %d \n", pcb_to_process->t_index, pcb_to_process->b_index, pcb_to_process->b_length);
                 usleep(pcb_to_process->b_length*1000);
             }
@@ -136,7 +140,7 @@ void *doSJob(void* param){
 int main(int argc, char *argv[])
 {
     // LOCAL VARIABLES  
-    pthread_t *tids = malloc((N+1)*sizeof(pthread_t*));
+    pthread_t *tids = malloc((N+1)*sizeof(pthread_t));
     pthread_attr_t attr;
     int *arg;
     char* fileName;
@@ -185,8 +189,8 @@ int main(int argc, char *argv[])
 
     // Wait for the created threads
     for (int i = (N+1); i > 0; i--){
-        pthread_join(*tids, NULL);
         tids--;
+        pthread_join(*tids, NULL);
     }
 
     pthread_attr_destroy(&attr);
