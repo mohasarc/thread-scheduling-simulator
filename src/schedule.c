@@ -116,7 +116,11 @@ void *doSJob(void* param){
         pthread_mutex_lock(&a_mutex);
         {
             // success = LL_pop(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
-            success = get_using_SJF(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
+            // success = get_using_SJF(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
+            printf("\n\n\n===================\n");
+            LL_print(RQ_HEAD, RQ_TAIL);
+            printf("===================\n");
+            success = get_using_PRIO(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
             if (success)
             {   
                 processed++;
