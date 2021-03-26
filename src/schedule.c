@@ -30,6 +30,7 @@ char* ALG;  // The schedulingalgorithm to use: “FCFS”,  “SJF”, “PRIO�
 struct LL_NODE* RQ_HEAD = NULL; // The ready queue head
 struct LL_NODE* RQ_TAIL = NULL; // The ready queue tail
 
+pthread_mutex_t a_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * Generates an exponantially distributed random number
@@ -55,22 +56,38 @@ void *doWJob(void* t_index){
     int b_length;
     struct timeval wall_clock_time;
     long wall_clock_time_usec;
+    int this_t_index = *((int *) t_index);
+
     srand ( time(NULL) );
     
     for (int i = 1; i <= Bcount; i++)
     {
         // Generate random numbers
-        interarrival_time = getExpRandomNum(avgA);
-        b_length = getExpRandomNum(avgB);
+        do {
+            interarrival_time = getExpRandomNum(avgA);
+        } while(interarrival_time < minA);
+
+        do
+        {
+            b_length = getExpRandomNum(avgB);
+        } while (b_length < minB);
+        
 
         // Sleep
+        printf("In thread %d, Interarivaltime: %d\n", this_t_index, interarrival_time);
         usleep(interarrival_time*1000);
-
-        // Schedule self
+        
+        // Calculate time of day
         gettimeofday(&wall_clock_time, NULL);
         wall_clock_time_usec = (wall_clock_time.tv_sec * 1000) + wall_clock_time.tv_usec/1000;
+        
+        // Create PCB_DATA object
         struct PCB_DATA *pcb_data = create_pcb_data(*((int *) t_index), i, b_length, wall_clock_time_usec);
+
+        // Schedule selt (cretical section)
+        pthread_mutex_lock(&a_mutex);
         LL_shift(pcb_data, &RQ_HEAD, &RQ_TAIL);
+        pthread_mutex_unlock(&a_mutex);
     }
 
     return NULL;
@@ -124,12 +141,22 @@ int main(int argc, char *argv[])
     // Create the threads
     pthread_t tid;
     pthread_attr_t attr;
+    pthread_t *tids = malloc((N+1)*sizeof(pthread_t*));
+    int *arg;
+    
+    for (int i = 1; i <= N; i++){
+        arg = (int *)malloc(sizeof(int));
+        *arg = i;
+        pthread_attr_init(&attr);
+        pthread_create(tids, &attr, doWJob, arg);
+        tids++;
+    }
 
-    int *arg = (int *)malloc(sizeof(int));
-    *arg = 5;
-    pthread_attr_init(&attr);
-    pthread_create(&tid, &attr, doWJob, arg);
-    pthread_join(tid, NULL);
+    // Wait for the created threads
+    for (int i = N; i > 0; i--){
+        pthread_join(*tids, NULL);
+        tids--;
+    }
 
     LL_print(RQ_HEAD, RQ_TAIL);
 }
