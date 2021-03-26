@@ -31,6 +31,8 @@ struct LL_NODE* RQ_HEAD = NULL; // The ready queue head
 struct LL_NODE* RQ_TAIL = NULL; // The ready queue tail
 
 pthread_mutex_t a_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t signal_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t pcb_queued_signal = PTHREAD_COND_INITIALIZER;
 
 /**
  * Generates an exponantially distributed random number
@@ -49,6 +51,7 @@ double getExpRandomNum(int mean ){
 
 /**
  * The job a W thread does
+ * Adds itself to the Ready Queue
  * @param t_index The index of the thread
  * */
 void *doWJob(void* t_index){
@@ -62,13 +65,12 @@ void *doWJob(void* t_index){
     
     for (int i = 1; i <= Bcount; i++)
     {
-        // Generate random numbers
+        // Generate exponantially distributed random numbers
         do {
             interarrival_time = getExpRandomNum(avgA);
         } while(interarrival_time < minA);
 
-        do
-        {
+        do{
             b_length = getExpRandomNum(avgB);
         } while (b_length < minB);
         
@@ -84,9 +86,12 @@ void *doWJob(void* t_index){
         // Create PCB_DATA object
         struct PCB_DATA *pcb_data = create_pcb_data(*((int *) t_index), i, b_length, wall_clock_time_usec);
 
-        // Schedule selt (cretical section)
+        // Schedule self and signal S thread (cretical section)
         pthread_mutex_lock(&a_mutex);
-        LL_shift(pcb_data, &RQ_HEAD, &RQ_TAIL);
+        {
+            LL_shift(pcb_data, &RQ_HEAD, &RQ_TAIL);
+            pthread_cond_signal(&pcb_queued_signal);
+        }
         pthread_mutex_unlock(&a_mutex);
     }
 
@@ -95,17 +100,47 @@ void *doWJob(void* t_index){
 
 /**
  * The job an S thread does
+ * Decides which thread to run and remove from Ready Queue
  * @param param 
  * */
 void *doSJob(void* param){
+    struct PCB_DATA *pcb_to_process; 
+    int success = FALSE;
+
+    // There will be max. N*Bcount number of bursts
+    for (int i = 0; i < (N*Bcount); i++)
+    {
+        // Try to get an item from Ready Queue
+        pthread_mutex_lock(&a_mutex);
+        {
+            success = LL_pop(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
+            if (success)
+            {
+                printf("Running thread %d for %d'th bust with length %d \n", pcb_to_process->t_index, pcb_to_process->b_index, pcb_to_process->b_length);
+                usleep(pcb_to_process->b_length*1000);
+            }
+        
+            // Ready Queue is empty wait for another pcb to be inserted
+            if (!success)
+            {
+                printf("Ready Queue is emplty, waiting for bursts \n");
+                pthread_cond_wait(&pcb_queued_signal, &a_mutex);
+            }
+        }
+        pthread_mutex_unlock(&a_mutex);
+    }
+
     return NULL;
 }
 
 int main(int argc, char *argv[])
 {
     // LOCAL VARIABLES  
-    int readFromFile = FALSE;
+    pthread_t *tids = malloc((N+1)*sizeof(pthread_t*));
+    pthread_attr_t attr;
+    int *arg;
     char* fileName;
+    int readFromFile = FALSE;
 
     // Parsing arguments
     for (int i = 0; i < argc; i++){
@@ -134,16 +169,12 @@ int main(int argc, char *argv[])
         // Read data from file
     }
 
-    // int result = usleep(1000003);
-    // int result = nanosleep((struct timespec[]){{0, 500000000L}},NULL);
-    // printf("usleep returned: %d\n",result);
-
-    // Create the threads
-    pthread_t tid;
-    pthread_attr_t attr;
-    pthread_t *tids = malloc((N+1)*sizeof(pthread_t*));
-    int *arg;
+    // Create S thread
+    pthread_attr_init(&attr);
+    pthread_create(tids, &attr, doSJob, NULL);
+    tids++;    
     
+    // Create W threads
     for (int i = 1; i <= N; i++){
         arg = (int *)malloc(sizeof(int));
         *arg = i;
@@ -153,10 +184,13 @@ int main(int argc, char *argv[])
     }
 
     // Wait for the created threads
-    for (int i = N; i > 0; i--){
+    for (int i = (N+1); i > 0; i--){
         pthread_join(*tids, NULL);
         tids--;
     }
 
-    LL_print(RQ_HEAD, RQ_TAIL);
+    pthread_attr_destroy(&attr);
+    pthread_mutex_destroy(&a_mutex);
+    pthread_cond_destroy(&pcb_queued_signal);
+    pthread_exit(NULL);
 }
