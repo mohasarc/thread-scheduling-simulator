@@ -1,13 +1,17 @@
 #include "../run_queue/linked_list.h"
-#include "../run_queue/pcb.h"
+#include "../run_queue/b.h"
 #include "../defns.h"
 #include <stdio.h>
 
 /**
  * Bursts served in the order they are added to the runqueue.
+ * @param b_data The burst that was just removed
+ * @param HEAD Pointer to the head of the linked list
+ * @param TAIL Pointer to the tail of the linked list
+ * @return Removal success status
  */
-int get_using_FCFS(struct PCB_DATA **pcb_data, struct LL_NODE ** HEAD, struct LL_NODE ** TAIL){
-    return LL_pop(pcb_data, HEAD, TAIL);
+int get_using_FCFS(struct B_DATA **b_data, struct LL_NODE ** HEAD, struct LL_NODE ** TAIL){
+    return LL_pop(b_data, HEAD, TAIL);
 }
 
 /**
@@ -16,8 +20,12 @@ int get_using_FCFS(struct PCB_DATA **pcb_data, struct LL_NODE ** HEAD, struct LL
  * scheduled in the same order they are generated. Hence you 
  * look to the earliest burst of each thread and select the 
  * shortest one.
+ * @param b_data The burst that was just removed
+ * @param HEAD Pointer to the head of the linked list
+ * @param TAIL Pointer to the tail of the linked list
+ * @return Removal success status
  */
-int get_using_SJF(struct PCB_DATA **pcb_data, struct LL_NODE ** HEAD, struct LL_NODE ** TAIL){
+int get_using_SJF(struct B_DATA **b_data, struct LL_NODE ** HEAD, struct LL_NODE ** TAIL){
     struct LL_NODE *cur = *TAIL; // The earliest inserted
     struct LL_NODE *shortest_burst_node = *TAIL;
 
@@ -31,7 +39,7 @@ int get_using_SJF(struct PCB_DATA **pcb_data, struct LL_NODE ** HEAD, struct LL_
     }
 
     if (shortest_burst_node){
-        *pcb_data = shortest_burst_node->data;
+        *b_data = shortest_burst_node->data;
         LL_remove(shortest_burst_node, HEAD, TAIL);
         return TRUE;
     } else {
@@ -46,8 +54,12 @@ int get_using_SJF(struct PCB_DATA **pcb_data, struct LL_NODE ** HEAD, struct LL_
  * not reorder the bursts of a particular thread. We have look 
  * to the earliest bursts of each thread in the runqueue and 
  * select the one that has highest priority.
+ * @param b_data The burst that was just removed
+ * @param HEAD Pointer to the head of the linked list
+ * @param TAIL Pointer to the tail of the linked list
+ * @return Removal success status
  */
-int get_using_PRIO(struct PCB_DATA **pcb_data, struct LL_NODE ** HEAD, struct LL_NODE ** TAIL){
+int get_using_PRIO(struct B_DATA **b_data, struct LL_NODE ** HEAD, struct LL_NODE ** TAIL){
     struct LL_NODE *cur = *TAIL; // The earliest inserted
     struct LL_NODE *h_priority_burst_node = *TAIL;
 
@@ -61,7 +73,7 @@ int get_using_PRIO(struct PCB_DATA **pcb_data, struct LL_NODE ** HEAD, struct LL
     }
 
     if (h_priority_burst_node){
-        *pcb_data = h_priority_burst_node->data;
+        *b_data = h_priority_burst_node->data;
         LL_remove(h_priority_burst_node, HEAD, TAIL);
         return TRUE;
     } else {
@@ -82,8 +94,12 @@ int get_using_PRIO(struct PCB_DATA **pcb_data, struct LL_NODE ** HEAD, struct LL
  * is selected for execution. Again we can not reorder the bursts 
  * of a particular thread. They need to be served in the order 
  * they are added to the runqueue.
+ * @param b_data The burst that was just removed
+ * @param HEAD Pointer to the head of the linked list
+ * @param TAIL Pointer to the tail of the linked list
+ * @return Removal success status
  */
-int get_using_VRUNTIME(struct PCB_DATA **pcb_data, struct LL_NODE ** HEAD, struct LL_NODE ** TAIL){
+int get_using_VRUNTIME(struct B_DATA **b_data, struct LL_NODE ** HEAD, struct LL_NODE ** TAIL){
     struct LL_NODE *cur = *TAIL; // The earliest inserted
     struct LL_NODE *h_priority_burst_node = *TAIL;
 
@@ -97,7 +113,7 @@ int get_using_VRUNTIME(struct PCB_DATA **pcb_data, struct LL_NODE ** HEAD, struc
     }
 
     if (h_priority_burst_node){
-        *pcb_data = h_priority_burst_node->data;
+        *b_data = h_priority_burst_node->data;
         LL_remove(h_priority_burst_node, HEAD, TAIL);
         return TRUE;
     } else {

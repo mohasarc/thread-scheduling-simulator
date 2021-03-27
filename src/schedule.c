@@ -4,13 +4,10 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
-// #include <sys/types.h>
-// #include <sys/wait.h>
 #include <sys/time.h>
 #include <time.h>
-// #include <fcntl.h> 
 #include "./run_queue/linked_list.h"
-#include "./run_queue/pcb.h"
+#include "./run_queue/b.h"
 #include "./scheduling_algos/scheduling_algos.h"
 #include "defns.h"
 
@@ -26,18 +23,26 @@ int avgB;                   // The parameter of the exponentially distributed ra
 int minA;                   // Minimum random value. (if less regenerate)
 int avgA;                   // The parameter of the exponentially distributed random 
                             // value of the interarrival time (sleep time of W threads).
-char* ALG;                  // The schedulingalgorithm to use: “FCFS”,  “SJF”, “PRIO”, “VRUNTIME”.
-char* inprefix;             // The file to read from
-int readFromFile = FALSE;   // Whether to wear from file or not
+char *ALG;                  // The schedulingalgorithm to use: “FCFS”,  “SJF”, “PRIO”, “VRUNTIME”.
+char *inprefix;             // The file to read from
 int *thread_exec_data;      // array listing the execution status of each thread
+int readFromFile = FALSE;   // Whether to wear from file or not
 
-struct LL_NODE* RQ_HEAD = NULL; // The ready queue head
-struct LL_NODE* RQ_TAIL = NULL; // The ready queue tail
+struct LL_NODE *RQ_HEAD = NULL; // The run queue head
+struct LL_NODE *RQ_TAIL = NULL; // The run queue tail
 
 pthread_mutex_t a_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t pcb_queued_signal = PTHREAD_COND_INITIALIZER;
+pthread_cond_t b_queued_signal = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t b_count_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// FUNCTIONS' PROTOTYPES
+double getExpRandomNum(int mean );
+int readDataFromFile(FILE* in_file, int *interarrival_time, int *b_length);
+int threadsFinishedExecution(int *thread_exec_data, int thread_count);
+void *doWJob(void *t_index);
+void *doSJob(void *param);
+
+// FUNCTIONS' DEFINITIONS
 /**
  * Generates an exponantially distributed random number
  * @param mean
@@ -50,7 +55,8 @@ double getExpRandomNum(int mean ){
     rn = (double)rand() / (double)((unsigned)RAND_MAX + 1);
 
     // Convert to exponential destribution
-    return log((1-rn))/(-lambda);
+    // return  lambda * exp(-lambda * rn);
+    return log(1-rn)/(-lambda);
 }
 
 /**
@@ -60,7 +66,7 @@ double getExpRandomNum(int mean ){
  * @param b_length Second value read from the line
  * @return A boolean indicating the read operation success
  */
-int readDataFromFile(FILE* in_file, int *interarrival_time, int *b_length){
+int readDataFromFile(FILE *in_file, int *interarrival_time, int *b_length){
     if ( fscanf(in_file, "%d", interarrival_time) == 1 && fscanf(in_file, "%d", b_length) == 1){
         return TRUE;
     }
@@ -85,12 +91,13 @@ int threadsFinishedExecution(int *thread_exec_data, int thread_count){
 
 /**
  * The job a W thread does
- * Adds itself to the Ready Queue
+ * Adds itself to the run Queue
  * @param t_index The index of the thread
  * */
-void *doWJob(void* t_index){
+void *doWJob(void *t_index){
+    // Local variables
     struct timeval wall_clock_time;
-    struct PCB_DATA *pcb_data;
+    struct B_DATA *b_data;
     long wall_clock_time_ms = 0;
     int interarrival_time = 0;
     int generatedBursts = 0;
@@ -102,7 +109,7 @@ void *doWJob(void* t_index){
     srand ( time(NULL) * (*((int *) t_index)) );
 
     if (readFromFile){
-        snprintf(fileName, 255, "%s-%d.txt", inprefix,  *((int *) t_index));
+        snprintf(fileName, 255, "%s-%d%s", inprefix,  *((int *) t_index), FILE_EXTENTION);
         in_file = fopen(fileName, "r"); // read only
         if (! in_file ){
             printf("oops, file can't be read\n");
@@ -112,7 +119,7 @@ void *doWJob(void* t_index){
 
     while (generatedBursts <= Bcount || readFromFile)
     {
-        // Generate exponantially distributed random numbers
+        // Generate or read exponantially distributed random numbers
         if (!readFromFile){
             do {
                 interarrival_time = getExpRandomNum(avgA);
@@ -128,77 +135,72 @@ void *doWJob(void* t_index){
         }
 
         // Sleep
-        printf("In thread %d, Interarivaltime: %d\n", *((int *) t_index), interarrival_time);
         usleep(interarrival_time*1000);
         
         // Calculate time of day
         gettimeofday(&wall_clock_time, NULL);
         wall_clock_time_ms = (wall_clock_time.tv_sec * 1000) + wall_clock_time.tv_usec/1000;
         
-        // Create PCB_DATA object
-        pcb_data = create_pcb_data(*((int *) t_index), generatedBursts, b_length, wall_clock_time_ms, vruntime);
+        // Create B_DATA object
+        b_data = create_b_data(*((int *) t_index), generatedBursts, b_length, wall_clock_time_ms, vruntime);
         vruntime += b_length*(0.7+0.3*((double)(*((int *) t_index))));
         generatedBursts += 1;
 
         // Schedule self and signal S thread (cretical section)
         pthread_mutex_lock(&a_mutex);
         {
-            LL_shift(pcb_data, &RQ_HEAD, &RQ_TAIL);
-            pthread_cond_signal(&pcb_queued_signal);
+            LL_shift(b_data, &RQ_HEAD, &RQ_TAIL);
+            pthread_cond_signal(&b_queued_signal);
         }
         pthread_mutex_unlock(&a_mutex);
     }
 
     thread_exec_data[*((int *) t_index) - 1] = TRUE; // Indicate the its execution ended
+    free(t_index);
     return NULL;
 }
 
 /**
  * The job an S thread does
- * Decides which thread to run and remove from Ready Queue
+ * Decides which thread to run and remove from run Queue
  * @param param 
  * */
-void *doSJob(void* param){
-    struct PCB_DATA *pcb_to_process; 
+void *doSJob(void *param){
+    struct B_DATA *b_to_process; 
     int success = FALSE;
 
-    // Check if there is any burst in ready queue or there will be more bursts
+    // Check if there is any burst in run queue or there will be more bursts
     while (!threadsFinishedExecution(thread_exec_data, N) || RQ_HEAD)
     {
-        // Try to get an item from Ready Queue
+        // Try to get an item from run Queue (critical section)
         pthread_mutex_lock(&a_mutex);
         {
-            printf("\n\n\n===================\n");
-            LL_print(RQ_HEAD, RQ_TAIL);
-            printf("===================\n");
-
             if (strcmp(ALG, "FCFS") == 0){
-                success = get_using_FCFS(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
+                success = get_using_FCFS(&b_to_process, &RQ_HEAD, &RQ_TAIL);
             } else if (strcmp(ALG, "SJF") == 0) {
-                success = get_using_SJF(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
+                success = get_using_SJF(&b_to_process, &RQ_HEAD, &RQ_TAIL);
             } else if (strcmp(ALG, "PRIO") == 0){
-                success = get_using_PRIO(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
+                success = get_using_PRIO(&b_to_process, &RQ_HEAD, &RQ_TAIL);
             } else if (strcmp(ALG, "VRUNTIME") == 0){
-                success = get_using_VRUNTIME(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
+                success = get_using_VRUNTIME(&b_to_process, &RQ_HEAD, &RQ_TAIL);
             }
-
         }
         pthread_mutex_unlock(&a_mutex);
 
+        // Could retrieve a burst from the run queue
+        // Simulate running it by sleeping for the same amount of time
         if (success)
         {
-            printf("Running thread %d for %d'th bust with length %d \n", pcb_to_process->t_index, pcb_to_process->b_index, pcb_to_process->b_length);
-            usleep(pcb_to_process->b_length*1000);
+            usleep(b_to_process->b_length * 1000);
+            free(b_to_process);
         }
 
-
-        // Ready Queue is empty wait for another pcb to be inserted
+        // run Queue is empty wait for another b to be inserted
         if (!success)
         {
             pthread_mutex_lock(&a_mutex);
             {
-                printf("Ready Queue is emplty, waiting for bursts \n");
-                pthread_cond_wait(&pcb_queued_signal, &a_mutex);
+                pthread_cond_wait(&b_queued_signal, &a_mutex);
             }
             pthread_mutex_unlock(&a_mutex);
         }
@@ -207,6 +209,12 @@ void *doSJob(void* param){
     return NULL;
 }
 
+/**
+ * Execution:
+ * schedule <N> <Bcount> <minB> <avgB> <minA> <avgA> <ALG>
+ * schedule <N> <ALG> -f <inprefix>
+ * i.e. <inprefix>-i.txt
+ */
 int main(int argc, char *argv[])
 {
     // LOCAL VARIABLES  
@@ -214,17 +222,8 @@ int main(int argc, char *argv[])
     pthread_attr_t attr;
     int *arg;
 
-    // Parsing arguments
-    for (int i = 0; i < argc; i++){
-        if (strcmp(argv[i], READ_FROM_FILE_OPT) == 0){
-            readFromFile = TRUE;
-            inprefix = argv[i+1];
-            break;
-        }
-    }
-
-    // Parse the rest of arguments
-    if (!readFromFile){
+    // Parse the arguments
+    if (strcmp(argv[3], READ_FROM_FILE_OPT) != 0){
         if (argc < 8){
             fprintf(stderr, "Missing arguments!\n");
             exit(1);
@@ -238,13 +237,13 @@ int main(int argc, char *argv[])
             ALG     = argv[7];
         }
     } else {
-        // Read data from file
-        N        = atoi(argv[1]);
-        ALG      = argv[2];
-        inprefix = argv[4];
+        N            = atoi(argv[1]);
+        ALG          = argv[2];
+        inprefix     = argv[4];
+        readFromFile = TRUE;
     }
 
-    thread_exec_data = malloc(N*sizeof(int));
+    thread_exec_data = malloc(N * sizeof(int));
     for (int i = 0; i < N; i++){
         thread_exec_data[i] = FALSE;
     }
@@ -269,11 +268,10 @@ int main(int argc, char *argv[])
         pthread_join(*tids, NULL);
     }
 
-    // free(tids);
-    // free(thread_exec_data);
 
+    free(tids);
     pthread_attr_destroy(&attr);
     pthread_mutex_destroy(&a_mutex);
-    pthread_cond_destroy(&pcb_queued_signal);
+    pthread_cond_destroy(&b_queued_signal);
     pthread_exit(NULL);
 }

@@ -9,7 +9,7 @@
  * @param HEAD Pointer to the head of the linked list
  * @param TAIL Pointer to the tail of the linked list
  * */
-void LL_push(struct PCB_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
+void LL_push(struct B_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
     if (!*HEAD){
         // Empty list
         // Create new node
@@ -43,7 +43,7 @@ void LL_push(struct PCB_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAIL
  * @param HEAD Pointer to the head of the linked list
  * @param TAIL Pointer to the tail of the linked list
  * */
-void LL_shift(struct PCB_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
+void LL_shift(struct B_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
     if (!*HEAD){
         LL_push(data, HEAD, TAIL);
     } else {
@@ -69,7 +69,7 @@ void LL_shift(struct PCB_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAI
  * @param TAIL Pointer to the tail of the linked list
  * @return Removal success status
  * */
-int LL_pop(struct PCB_DATA **data, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
+int LL_pop(struct B_DATA **data, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
     if (*TAIL){
         *data = (*TAIL)->data;
         LL_remove(*TAIL, HEAD, TAIL);
@@ -86,7 +86,7 @@ int LL_pop(struct PCB_DATA **data, struct LL_NODE **HEAD, struct LL_NODE **TAIL)
  * @param TAIL Pointer to the tail of the linked list
  * @return Removal success status
  * */
-int LL_unshift(struct PCB_DATA **data, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
+int LL_unshift(struct B_DATA **data, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
     if (*HEAD){
         *data = (*HEAD)->data;
         LL_remove(*HEAD, HEAD, TAIL);
@@ -97,16 +97,16 @@ int LL_unshift(struct PCB_DATA **data, struct LL_NODE **HEAD, struct LL_NODE **T
 }
 
 /**
- * @param pcbToRemove Pointer to the node to be removed
+ * @param bToRemove Pointer to the node to be removed
  * @param HEAD Pointer to the head of the linked list
  * @param TAIL Pointer to the tail of the linked list
  * */
-void LL_remove(struct LL_NODE *pcbToRemove, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
+void LL_remove(struct LL_NODE *bToRemove, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
     struct LL_NODE *cur = *HEAD;
 
     while (cur)
     {
-        if(cur == pcbToRemove){
+        if(cur == bToRemove){
             if (cur->prev){
                 cur->prev->next = cur->next;
             } else {
@@ -133,7 +133,7 @@ void LL_remove(struct LL_NODE *pcbToRemove, struct LL_NODE **HEAD, struct LL_NOD
  * @param HEAD Pointer to the head of the linked list
  * @param TAIL Pointer to the tail of the linked list
  * */
-void LL_remove_by_value(struct PCB_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
+void LL_remove_by_value(struct B_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
     struct LL_NODE *cur = *HEAD;
 
     while (cur)
