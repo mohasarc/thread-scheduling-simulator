@@ -156,8 +156,8 @@ void LL_print(struct LL_NODE* HEAD, struct LL_NODE* TAIL){
 
     while (cur)
     {
-        printf("t_index: %d, b_length: %d, b_index: %d, wall_clock_time: %d\n", cur->data->t_index, cur->data->b_length, 
-                                                                                cur->data->b_index, cur->data->wall_clock_time);
+        printf("t_index: %d, b_length: %d, b_index: %d, wall_clock_time: %d, vruntime: %d\n", cur->data->t_index, cur->data->b_length, 
+                                                                                cur->data->b_index, cur->data->wall_clock_time, cur->data->vruntime);
         cur = cur->next;
     }
 }

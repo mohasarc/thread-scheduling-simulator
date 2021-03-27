@@ -61,6 +61,7 @@ void *doWJob(void* t_index){
     struct timeval wall_clock_time;
     long wall_clock_time_usec;
     int this_t_index = *((int *) t_index);
+    int vruntime = 0;
 
     srand ( time(NULL) * this_t_index );
     
@@ -85,7 +86,8 @@ void *doWJob(void* t_index){
         wall_clock_time_usec = (wall_clock_time.tv_sec * 1000) + wall_clock_time.tv_usec/1000;
         
         // Create PCB_DATA object
-        struct PCB_DATA *pcb_data = create_pcb_data(*((int *) t_index), i, b_length, wall_clock_time_usec);
+        struct PCB_DATA *pcb_data = create_pcb_data(*((int *) t_index), i, b_length, wall_clock_time_usec, vruntime);
+        vruntime += b_length*(0.7+0.3*((double)this_t_index));
 
         // Schedule self and signal S thread (cretical section)
         pthread_mutex_lock(&a_mutex);
@@ -115,27 +117,41 @@ void *doSJob(void* param){
         // Try to get an item from Ready Queue
         pthread_mutex_lock(&a_mutex);
         {
-            // success = LL_pop(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
-            // success = get_using_SJF(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
             printf("\n\n\n===================\n");
             LL_print(RQ_HEAD, RQ_TAIL);
             printf("===================\n");
-            success = get_using_PRIO(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
-            if (success)
-            {   
-                processed++;
-                printf("Running thread %d for %d'th bust with length %d \n", pcb_to_process->t_index, pcb_to_process->b_index, pcb_to_process->b_length);
-                usleep(pcb_to_process->b_length*1000);
+
+            if (strcmp(ALG, "FCFS") == 0){
+                success = get_using_FCFS(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
+            } else if (strcmp(ALG, "SJF") == 0) {
+                success = get_using_SJF(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
+            } else if (strcmp(ALG, "PRIO") == 0){
+                success = get_using_PRIO(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
+            } else if (strcmp(ALG, "VRUNTIME") == 0){
+                success = get_using_VRUNTIME(&pcb_to_process, &RQ_HEAD, &RQ_TAIL);
             }
-        
-            // Ready Queue is empty wait for another pcb to be inserted
-            if (!success)
+
+        }
+        pthread_mutex_unlock(&a_mutex);
+
+        if (success)
+        {   
+            processed++;
+            printf("Running thread %d for %d'th bust with length %d \n", pcb_to_process->t_index, pcb_to_process->b_index, pcb_to_process->b_length);
+            usleep(pcb_to_process->b_length*1000);
+        }
+
+
+        // Ready Queue is empty wait for another pcb to be inserted
+        if (!success)
+        {
+            pthread_mutex_lock(&a_mutex);
             {
                 printf("Ready Queue is emplty, waiting for bursts \n");
                 pthread_cond_wait(&pcb_queued_signal, &a_mutex);
             }
+            pthread_mutex_unlock(&a_mutex);
         }
-        pthread_mutex_unlock(&a_mutex);
     }
 
     return NULL;
