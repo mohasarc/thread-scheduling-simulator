@@ -91,7 +91,7 @@ int threadsFinishedExecution(int *thread_exec_data, int thread_count){
 void *doWJob(void* t_index){
     struct timeval wall_clock_time;
     struct PCB_DATA *pcb_data;
-    long wall_clock_time = 0;
+    long wall_clock_time_ms = 0;
     int interarrival_time = 0;
     int generatedBursts = 0;
     int b_length = 0;
@@ -133,10 +133,10 @@ void *doWJob(void* t_index){
         
         // Calculate time of day
         gettimeofday(&wall_clock_time, NULL);
-        wall_clock_time = (wall_clock_time.tv_sec * 1000) + wall_clock_time.tv_usec/1000;
+        wall_clock_time_ms = (wall_clock_time.tv_sec * 1000) + wall_clock_time.tv_usec/1000;
         
         // Create PCB_DATA object
-        pcb_data = create_pcb_data(*((int *) t_index), generatedBursts, b_length, wall_clock_time, vruntime);
+        pcb_data = create_pcb_data(*((int *) t_index), generatedBursts, b_length, wall_clock_time_ms, vruntime);
         vruntime += b_length*(0.7+0.3*((double)(*((int *) t_index))));
         generatedBursts += 1;
 
