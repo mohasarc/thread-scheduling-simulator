@@ -25,7 +25,6 @@ int avgA;                   // The parameter of the exponentially distributed ra
                             // value of the interarrival time (sleep time of W threads).
 char *ALG;                  // The schedulingalgorithm to use: “FCFS”,  “SJF”, “PRIO”, “VRUNTIME”.
 char *inprefix;             // The file to read from
-int *thread_exec_data;      // array listing the execution status of each thread
 int *thread_waiting;    // array listing the avg waiting time of each thread
 int readFromFile = FALSE;   // Whether to wear from file or not
 int exitedThreadCount = 0;
@@ -267,8 +266,7 @@ int main(int argc, char *argv[])
     }
 
     tids =  (pthread_t*) calloc(N, sizeof(pthread_t));
-    thread_exec_data = (int*)malloc((10) * sizeof(int));
-    thread_waiting = (int*)malloc((N+100) * sizeof(int));
+    thread_waiting = (int*)malloc((N) * sizeof(int));
     for (int i = 0; i < N; i++){
         thread_waiting[i] = 0;
     }
@@ -276,7 +274,6 @@ int main(int argc, char *argv[])
     // Create S thread
     pthread_attr_init(&attr);
     pthread_create(&s_tid, &attr, doSJob, NULL);
-    // tids++;    
     
     // Create W threads
     for (int i = 0; i < N; i++){
@@ -284,7 +281,6 @@ int main(int argc, char *argv[])
         *arg = i+1;
         pthread_attr_init(&attr);
         pthread_create(&tids[i], &attr, doWJob, arg);
-        // free(arg);
     }
 
     // Wait for the created W threads
@@ -305,7 +301,6 @@ int main(int argc, char *argv[])
     pthread_mutex_destroy(&a_mutex);
     pthread_cond_destroy(&b_queued_signal);
     free(tids);
-    free(thread_exec_data);
     free(thread_waiting);
     pthread_exit(NULL);
 }
