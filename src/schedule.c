@@ -26,19 +26,22 @@ int avgA;                   // The parameter of the exponentially distributed ra
 char *ALG;                  // The schedulingalgorithm to use: “FCFS”,  “SJF”, “PRIO”, “VRUNTIME”.
 char *inprefix;             // The file to read from
 int *thread_exec_data;      // array listing the execution status of each thread
+int *thread_waiting;    // array listing the avg waiting time of each thread
 int readFromFile = FALSE;   // Whether to wear from file or not
+int exitedThreadCount = 0;
 
 struct LL_NODE *RQ_HEAD = NULL; // The run queue head
 struct LL_NODE *RQ_TAIL = NULL; // The run queue tail
 
 pthread_mutex_t a_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t b_queued_signal = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t b_count_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t b_t_finish_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t rq_access_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // FUNCTIONS' PROTOTYPES
 double getExpRandomNum(int mean );
 int readDataFromFile(FILE* in_file, int *interarrival_time, int *b_length);
-int threadsFinishedExecution(int *thread_exec_data, int thread_count);
+int threadsFinishedExecution();
 void *doWJob(void *t_index);
 void *doSJob(void *param);
 
@@ -76,16 +79,17 @@ int readDataFromFile(FILE *in_file, int *interarrival_time, int *b_length){
 
 /**
  * Checks if all threads have finished execution
- * @param thread_exec_data Array listing the execution status of each thread
- * @param thread_count Total number of threads
  * @return A boolean indicating whether all finished execution
  */
-int threadsFinishedExecution(int *thread_exec_data, int thread_count){
-    int allDone = TRUE;
-    for (int i = 0; i < thread_count; i++){
-        allDone = allDone && thread_exec_data[i];
+int threadsFinishedExecution(){
+    int allDone = FALSE;
+
+    pthread_mutex_lock(&b_t_finish_mutex);
+    {
+        allDone = exitedThreadCount == N;
     }
-    
+    pthread_mutex_unlock(&b_t_finish_mutex);
+
     return allDone;
 }
 
@@ -155,7 +159,12 @@ void *doWJob(void *t_index){
         pthread_mutex_unlock(&a_mutex);
     }
 
-    thread_exec_data[*((int *) t_index) - 1] = TRUE; // Indicate the its execution ended
+    pthread_mutex_lock(&b_t_finish_mutex);
+    {
+        exitedThreadCount++;
+    }
+    pthread_mutex_unlock(&b_t_finish_mutex);
+
     free(t_index);
     return NULL;
 }
@@ -166,12 +175,17 @@ void *doWJob(void *t_index){
  * @param param 
  * */
 void *doSJob(void *param){
+    struct timeval wall_clock_time;
     struct B_DATA *b_to_process; 
     int success = FALSE;
+    long cur_wall_clock_time_ms = 0;
 
     // Check if there is any burst in run queue or there will be more bursts
-    while (!threadsFinishedExecution(thread_exec_data, N) || RQ_HEAD)
+    pthread_mutex_lock(&a_mutex);
+    while (!threadsFinishedExecution() || RQ_HEAD)
     {
+        pthread_mutex_unlock(&a_mutex);
+
         // Try to get an item from run Queue (critical section)
         pthread_mutex_lock(&a_mutex);
         {
@@ -192,11 +206,16 @@ void *doSJob(void *param){
         if (success)
         {
             usleep(b_to_process->b_length * 1000);
+
+            // Calculate time of day
+            gettimeofday(&wall_clock_time, NULL);
+            cur_wall_clock_time_ms = (wall_clock_time.tv_sec * 1000) + wall_clock_time.tv_usec/1000;
+            thread_waiting[b_to_process->t_index-1] += cur_wall_clock_time_ms - b_to_process->wall_clock_time;
             free(b_to_process);
         }
 
         // run Queue is empty wait for another b to be inserted
-        if (!success)
+        if (!success && !threadsFinishedExecution())
         {
             pthread_mutex_lock(&a_mutex);
             {
@@ -204,7 +223,10 @@ void *doSJob(void *param){
             }
             pthread_mutex_unlock(&a_mutex);
         }
+
+        pthread_mutex_lock(&a_mutex);
     }
+    pthread_mutex_unlock(&a_mutex);
 
     return NULL;
 }
@@ -218,7 +240,8 @@ void *doSJob(void *param){
 int main(int argc, char *argv[])
 {
     // LOCAL VARIABLES  
-    pthread_t *tids = malloc((N+1)*sizeof(pthread_t));
+    pthread_t *tids;
+    pthread_t s_tid;
     pthread_attr_t attr;
     int *arg;
 
@@ -243,35 +266,46 @@ int main(int argc, char *argv[])
         readFromFile = TRUE;
     }
 
-    thread_exec_data = malloc(N * sizeof(int));
+    tids =  (pthread_t*) calloc(N, sizeof(pthread_t));
+    thread_exec_data = (int*)malloc((10) * sizeof(int));
+    thread_waiting = (int*)malloc((N+100) * sizeof(int));
     for (int i = 0; i < N; i++){
-        thread_exec_data[i] = FALSE;
+        thread_waiting[i] = 0;
     }
 
     // Create S thread
     pthread_attr_init(&attr);
-    pthread_create(tids, &attr, doSJob, NULL);
-    tids++;    
+    pthread_create(&s_tid, &attr, doSJob, NULL);
+    // tids++;    
     
     // Create W threads
-    for (int i = 1; i <= N; i++){
+    for (int i = 0; i < N; i++){
         arg = (int *)malloc(sizeof(int));
-        *arg = i;
+        *arg = i+1;
         pthread_attr_init(&attr);
-        pthread_create(tids, &attr, doWJob, arg);
-        tids++;
+        pthread_create(&tids[i], &attr, doWJob, arg);
+        // free(arg);
     }
 
-    // Wait for the created threads
-    for (int i = (N+1); i > 0; i--){
-        tids--;
-        pthread_join(*tids, NULL);
+    // Wait for the created W threads
+    for (int i = 0; i < N; i++){
+        pthread_join(tids[i], NULL);
     }
 
+    // Wait for the S thread
+    pthread_join(s_tid, NULL);
 
-    free(tids);
+    LL_print(RQ_HEAD, RQ_TAIL);
+
+    for (int i = 0; i < N; i++){
+        printf("Thread %d waited for: %d ms\n", i+1, thread_waiting[i]);
+    }
+
     pthread_attr_destroy(&attr);
     pthread_mutex_destroy(&a_mutex);
     pthread_cond_destroy(&b_queued_signal);
+    free(tids);
+    free(thread_exec_data);
+    free(thread_waiting);
     pthread_exit(NULL);
 }

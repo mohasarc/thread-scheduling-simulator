@@ -13,7 +13,8 @@ void LL_push(struct B_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
     if (!*HEAD){
         // Empty list
         // Create new node
-        *HEAD = (struct LL_NODE*)malloc(sizeof(struct LL_NODE));
+        // *HEAD = (struct LL_NODE*)malloc(sizeof(struct LL_NODE));
+        *HEAD = (struct LL_NODE*)calloc(1, sizeof(struct LL_NODE));
 
         // Set its values
         (*HEAD)->next   = NULL;
@@ -25,7 +26,8 @@ void LL_push(struct B_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAIL){
     } else {
         // List not empty
         // Create new node
-        (*TAIL)->next = (struct LL_NODE*)malloc(sizeof(struct LL_NODE));
+        // (*TAIL)->next = (struct LL_NODE*)malloc(sizeof(struct LL_NODE));
+        (*TAIL)->next = (struct LL_NODE*)calloc(1, sizeof(struct LL_NODE));
 
         // Set its values
         (*TAIL)->next->next = NULL;
@@ -49,7 +51,8 @@ void LL_shift(struct B_DATA *data, struct LL_NODE **HEAD, struct LL_NODE **TAIL)
     } else {
         // List not empty
         // Create new node
-        struct LL_NODE* newNode = (struct LL_NODE*)malloc(sizeof(struct LL_NODE));
+        // struct LL_NODE* newNode = (struct LL_NODE*)malloc(sizeof(struct LL_NODE));
+        struct LL_NODE* newNode = (struct LL_NODE*)calloc(1, sizeof(struct LL_NODE));
 
         // Set its data
         newNode->next = (*HEAD);
