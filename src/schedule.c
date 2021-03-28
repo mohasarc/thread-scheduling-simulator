@@ -14,6 +14,14 @@
 #define FILE_EXTENTION ".txt"
 #define READ_FROM_FILE_OPT "-f"
 
+struct THREAD_DATA // Structure that keeps info about the running threads
+{
+    long first_arrival_time;
+    int tot_burst;
+    int tot_waiting_time;
+    int finish_time;
+};
+
 // GLOBAL VARIABLES
 int N;                      // The number of W threads.
 int Bcount;                 // The number of bursts that each W thread will generate.
@@ -25,9 +33,12 @@ int avgA;                   // The parameter of the exponentially distributed ra
                             // value of the interarrival time (sleep time of W threads).
 char *ALG;                  // The schedulingalgorithm to use: “FCFS”,  “SJF”, “PRIO”, “VRUNTIME”.
 char *inprefix;             // The file to read from
-int *thread_waiting;    // array listing the avg waiting time of each thread
+long program_exec_start_ms; // Records the time the program started execution
 int readFromFile = FALSE;   // Whether to wear from file or not
-int exitedThreadCount = 0;
+int exitedThreadCount = 0;  // The number of threads that finished execution
+
+
+struct THREAD_DATA *thread_data;
 
 struct LL_NODE *RQ_HEAD = NULL; // The run queue head
 struct LL_NODE *RQ_TAIL = NULL; // The run queue tail
@@ -92,6 +103,12 @@ int threadsFinishedExecution(){
     return allDone;
 }
 
+long getCurTimeMs(){
+    struct timeval wall_clock_time;
+    gettimeofday(&wall_clock_time, NULL);
+    return (wall_clock_time.tv_sec * 1000) + wall_clock_time.tv_usec/1000;
+}
+
 /**
  * The job a W thread does
  * Adds itself to the run Queue
@@ -99,20 +116,19 @@ int threadsFinishedExecution(){
  * */
 void *doWJob(void *t_index){
     // Local variables
-    struct timeval wall_clock_time;
     struct B_DATA *b_data;
-    long wall_clock_time_ms = 0;
     int interarrival_time = 0;
     int generatedBursts = 0;
     int b_length = 0;
     int vruntime = 0;
     char fileName[255];
+    int t_id = *((int *) t_index);
     FILE* in_file;
 
-    srand ( time(NULL) * (*((int *) t_index)) );
+    srand ( time(NULL) * (t_id) );
 
     if (readFromFile){
-        snprintf(fileName, 255, "%s-%d%s", inprefix,  *((int *) t_index), FILE_EXTENTION);
+        snprintf(fileName, 255, "%s-%d%s", inprefix,  t_id, FILE_EXTENTION);
         in_file = fopen(fileName, "r"); // read only
         if (! in_file ){
             printf("oops, file can't be read\n");
@@ -139,23 +155,24 @@ void *doWJob(void *t_index){
 
         // Sleep
         usleep(interarrival_time*1000);
-        
-        // Calculate time of day
-        gettimeofday(&wall_clock_time, NULL);
-        wall_clock_time_ms = (wall_clock_time.tv_sec * 1000) + wall_clock_time.tv_usec/1000;
-        
-        // Create B_DATA object
-        b_data = create_b_data(*((int *) t_index), generatedBursts, b_length, wall_clock_time_ms, vruntime);
-        vruntime += b_length*(0.7+0.3*((double)(*((int *) t_index))));
-        generatedBursts += 1;
+
+        // Update thread data
+        if (!thread_data[t_id-1].first_arrival_time){
+            thread_data[t_id-1].first_arrival_time = getCurTimeMs();
+        }
+        thread_data[t_id-1].tot_burst += b_length;
 
         // Schedule self and signal S thread (cretical section)
         pthread_mutex_lock(&a_mutex);
         {
+            // Create B_DATA object
+            b_data = create_b_data(t_id, generatedBursts, b_length, getCurTimeMs(), vruntime);
             LL_shift(b_data, &RQ_HEAD, &RQ_TAIL);
             pthread_cond_signal(&b_queued_signal);
         }
         pthread_mutex_unlock(&a_mutex);
+        vruntime += b_length*(0.7+0.3*((double)(t_id)));
+        generatedBursts += 1;
     }
 
     pthread_mutex_lock(&b_t_finish_mutex);
@@ -174,10 +191,8 @@ void *doWJob(void *t_index){
  * @param param 
  * */
 void *doSJob(void *param){
-    struct timeval wall_clock_time;
     struct B_DATA *b_to_process; 
     int success = FALSE;
-    long cur_wall_clock_time_ms = 0;
 
     // Check if there is any burst in run queue or there will be more bursts
     pthread_mutex_lock(&a_mutex);
@@ -205,11 +220,8 @@ void *doSJob(void *param){
         if (success)
         {
             usleep(b_to_process->b_length * 1000);
-
-            // Calculate time of day
-            gettimeofday(&wall_clock_time, NULL);
-            cur_wall_clock_time_ms = (wall_clock_time.tv_sec * 1000) + wall_clock_time.tv_usec/1000;
-            thread_waiting[b_to_process->t_index-1] += cur_wall_clock_time_ms - b_to_process->wall_clock_time;
+            thread_data[b_to_process->t_index-1].tot_waiting_time = getCurTimeMs() - thread_data[b_to_process->t_index-1].first_arrival_time - thread_data[b_to_process->t_index-1].tot_burst;
+            thread_data[b_to_process->t_index-1].finish_time = getCurTimeMs() - program_exec_start_ms;
             free(b_to_process);
         }
 
@@ -243,7 +255,7 @@ int main(int argc, char *argv[])
     pthread_t s_tid;
     pthread_attr_t attr;
     int *arg;
-
+    program_exec_start_ms = getCurTimeMs();
     // Parse the arguments
     if (strcmp(argv[3], READ_FROM_FILE_OPT) != 0){
         if (argc < 8){
@@ -266,9 +278,12 @@ int main(int argc, char *argv[])
     }
 
     tids =  (pthread_t*) calloc(N, sizeof(pthread_t));
-    thread_waiting = (int*)malloc((N) * sizeof(int));
+    thread_data = (struct THREAD_DATA*) calloc(N, sizeof(struct THREAD_DATA));
     for (int i = 0; i < N; i++){
-        thread_waiting[i] = 0;
+        thread_data[i].finish_time = 0;
+        thread_data[i].first_arrival_time = 0;
+        thread_data[i].tot_burst = 0;
+        thread_data[i].tot_waiting_time = 0;
     }
 
     // Create S thread
@@ -293,14 +308,16 @@ int main(int argc, char *argv[])
 
     LL_print(RQ_HEAD, RQ_TAIL);
 
+    printf("Execution started at %ld ms\n", program_exec_start_ms);
+    printf("Total execution time: %ld ms\n", getCurTimeMs() - program_exec_start_ms);
     for (int i = 0; i < N; i++){
-        printf("Thread %d waited for: %d ms\n", i+1, thread_waiting[i]);
+        printf("Thread %d \t started at: %ld ms \tfinished at: %d ms \twaited for: %d ms \t executed for: %d ms\n", i+1, thread_data[i].first_arrival_time - program_exec_start_ms, thread_data[i].finish_time, thread_data[i].tot_waiting_time, thread_data[i].tot_burst);
     }
 
     pthread_attr_destroy(&attr);
     pthread_mutex_destroy(&a_mutex);
     pthread_cond_destroy(&b_queued_signal);
     free(tids);
-    free(thread_waiting);
+    free(thread_data);
     pthread_exit(NULL);
 }

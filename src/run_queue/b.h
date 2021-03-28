@@ -12,7 +12,7 @@ struct B_DATA
     int t_index; // Thread index
     int b_index; // Burst index
     int b_length; // Burst length
-    int wall_clock_time; // The wall clock time the bust is generated
+    long wall_clock_time; // The wall clock time the bust is generated
     int vruntime; // Thread's Virtual Runtime
 };
 
